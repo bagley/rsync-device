@@ -1,0 +1,28 @@
+
+# for those who think this is a script
+echo "Not a script!"
+exit 42
+
+
+Type			Hasher	Size		Amount	Time			Read/Wrt		~150G	Notes
+
+First run(check)	sha1sum	50mb	1G		2m54.858s		 5.8mb/s		7.28 hrs
+No changes	sha1sum	50mb	1G		1m1.882s		16.8mb/s		2.57 hrs
+
+First run(check)	md5sum	5mb		1G		(probably slow)
+No changes	md5sum	5mb		1G		
+
+First run(check)	md5sum	10mb	1G		1m59.231s	 8.58mb/s		4.96 hrs
+No changes	md5sum	10mb	1G		0m45.321s	22.6mb/s		1.89 hrs
+
+First run(check)	md5sum	20mb	1G		1m46.441s	 9.62mb/s		4.44 hrs
+No changes	md5sum	20mb	1G		0m43.529s	23.5mb/s		1.81 hrs
+
+First run(check)	md5sum	22mb	1G		1m45.616s	 9.70mb/s		4.40 hrs
+No changes	md5sum	22mb	1G		0m44.037s	23.3mb/s		1.83 hrs
+
+First run(check)	md5sum	50mb	1G		2m9.384s		 7.9mb/s		5.38 hrs
+No changes	md5sum	50mb	1G		0m47.949s	21.3mb/s		2.00 hrs
+
+First run(check)	md5sum	200mb	1G		3m8.603s		 5.43mb/s		7.86 hrs
+No changes	md5sum	200mb	1G		0m52.854s	19.4mb/s		2.20hrs		

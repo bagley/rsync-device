@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# changing this will result in having to rehash the devices
+checksummer="md5sum"
+
 # checksum each part, then see if it has changed. If so, copy over.
 # keep a record of backup's checksum, so each part is only read on copy
 # (or would it be better to verify? no, backuppc will do that)
@@ -16,8 +19,11 @@ backup=
 # little changes but may take longer. Larger is better for lots of changes
 # and may be faster.
 # Changing this will invalidate any currenty saved checksums
-mb_per_round=10
+mb_per_round=20
 notify_every_mb=500
+
+# unset any timeout
+unset TMOUT 2>/dev/null
 
 usage() {
   if [ -n "$1" ] ; then
@@ -82,10 +88,6 @@ while getopts "s:r:n:cvh" opt ; do
 done
 shift `expr $OPTIND - 1`
 
-# checks
-# if [ $mb_per_round -lt 0 ] || [ $mb_per_round > 9999999999999] ; then
-#  error "checksum size it too big or not a number: $md_per_round"
-# fi
 
 # left args are the files
 if [ $# -eq 2 ]  && [ -z "$check_only" ] ; then
@@ -111,7 +113,7 @@ get_sum() {
   skip=$2
   count=$3
   
-  checksum="$(dd if=$device skip=$skip count=$count bs=${mb_per_round}M 2>/dev/null | sha512sum - | awk '{print $1}')"
+  checksum="$(dd if=$device skip=$skip count=$count bs=${mb_per_round}M 2>/dev/null | "$checksummer" - | awk '{print $1}')"
   RET=$?
   return $RET
 }
@@ -356,7 +358,14 @@ while [ $AT_END -eq 0 ] ; do
   else
     notify_timeout=$(expr $notify_timeout - 1)
   fi
-  
+
+#  # test - exit after X mb of data
+#  TOTAL=$(expr $PART \* $mb_per_round)
+#  if [ $TOTAL -ge 1000 ] ; then
+#    echo "Finished $TOTAL mb"
+#    exit
+#  fi
+
   # next
   PART=$(expr $PART + 1)
   
