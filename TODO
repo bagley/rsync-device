@@ -15,7 +15,7 @@ loop until you have copied the amount of data you want {
 Too slow (only going at 10mb/s rather than 50mb/s like before).
 - may be because I only read 4096 from one file and jump to the other file
   Try reading lots of data and then processing it together
-- may be due to seeking. Try keeping track of where we are in the file
+- [didn't help] may be due to seeking. Try keeping track of where we are in the file
   and only seeking when needed.
 - delay writes? write all at once?
 - Try not writing at all (comment out code) and see if it makes a speed increase

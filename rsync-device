@@ -198,6 +198,7 @@ my $current_rewrote=0;
 my $backup_seek_pos=0;
 my $speed_start_time=time;
 my $speed_start_time_current_pass=time;
+my $verified_blocks=0;
 
 seek(orig,($x * $block_size) - $block_size,0);
 while (($n = read orig, $data, $block_size) != 0) { 
@@ -206,7 +207,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 #	$digest = md5_base64($data);
 	$digest = crc32($data);
 #	print save $digest . "\n";
-	if ( not exists $backup_block_hashes{$x} or $backup_block_hashes{$x} != $digest ) { 
+	if ( $verify or not exists $backup_block_hashes{$x} or $backup_block_hashes{$x} != $digest) { 
 		# this will also be the checkonly one
 #		if ( $backup_seek_pos != $x ) {
 			#print "seeked to $x\n";
@@ -216,14 +217,14 @@ while (($n = read orig, $data, $block_size) != 0) {
 		read(back, $backup_data, $block_size);
 #		$backup_seek_pos++;
 		$backup_digest = crc32($backup_data);
-		if ( $backup_block_hashes{$x} != $digest ) {
-			# print "changed from $backup_block_hashes{$x} at $x: $digest - $backup_digest\n";
-			$changed++;
-			$current_changed++;
-		}
-		if ($digest != $backup_digest ) {
+		# print "changed from $backup_block_hashes{$x} at $x: $digest - $backup_digest\n";
+		$changed++;
+		$current_changed++;
+		if ( $digest != $backup_digest ) {
+			
+			# update backup block
 			# write
-			# print "chksum and wrote $x\n";
+			# print "chksum and wrote $x\n";$rewrote++;
 			$rewrote++;
 			$current_rewrote++;
 #			if ( $backup_seek_pos != $x ) {
@@ -233,17 +234,30 @@ while (($n = read orig, $data, $block_size) != 0) {
 #			}
 			print back $data;
 #			$backup_seek_pos++;
+			
+			# save digest to database
+			# add to cached list to verify (because we wrote to them)
+			$cached_changed_blocks{$x}=$digest;
+			$cache_count++;
+		
 		}
 		else {
-			# print "only added chksum $x!\n";
-			$added++;
-			$current_added++;
+			# blocks match
+			if ( not exists $backup_block_hashes{$x} or
+					$backup_block_hashes{$x} != $digest ) {
+				# just update database
+				# print "only added chksum $x!\n";
+				# no verification needed
+				$backup_block_hashes{$x}=$digest;
+				$added++;
+				$current_added++;
+			}
+			
 		}
-		# add to cached list to verify
-		$cached_changed_blocks{$x}=$digest;
-		$cache_count++;
-		# save database only every $save_every (and verify it)
-		if ( $cache_count >= $save_every ) {
+	}
+	
+	# save database only every $save_every (and verify it)
+	if ( $x % $save_every == 0 and $x - $start_place >= $save_every ) {
 			foreach (sort keys %cached_changed_blocks) {
 				my $b=$_;
 #				if ( $backup_seek_pos != $b ) {
@@ -260,6 +274,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 					# todo: try to rewite and fix
 				}
 				$backup_block_hashes{$b} = $cached_changed_blocks{$b};
+				$verified_blocks++;
 			}
 			# sync
 			#system("sync");
@@ -273,7 +288,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 			%cached_changed_blocks=();
 			# print stats
 			print "Chkpnt block $x: " . (int($current_changed/$save_every*100)) .
-				"% changes, $current_rewrote/$rewrote (".
+				"% changes, $current_rewrote/$verified_blocks/$rewrote (".
 				(int($current_rewrote/$save_every*100)) .
 				"%) rewrites, $current_added/$added (".
 				(int($current_added/$save_every*100)) .
@@ -285,25 +300,27 @@ while (($n = read orig, $data, $block_size) != 0) {
 			$current_added=0;
 			$current_changed=0;
 			$current_rewrote=0;
+			$verified_blocks=0;
 			# print disk speeds
 			print int(($save_every * $block_size / 1024 / 1024 ) / (time - $speed_start_time_current_pass + 1)) . " Mb/s (";
 			$speed_start_time_current_pass=time;
-			print int(($x * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s avg)\n";
-		}
-	} elsif ( $x % $save_every == 0 ) {
-		# if it's checking all blocks, we dont need to show this
-		print "Chkpnt block $x, ";
-		if ( $checkpoint_file ) {
-			print chk "Checkpoint: $x blocks, $changed changes, $rewrote rewrites, $added database only\n";
-		}
-		print int(($x * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
-		# sync
-		#system("sync");
-		#print "sync\n";
-		$db->db_sync();
-		fsync(\*back) or die "fsync: $!";
-		#fsync(\*chk) or die "fsync: $!";
+			print int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s avg)\n";
+		
 	}
+#	elsif ( $x % $save_every == 0 ) {
+#		# if it's checking all blocks, we dont need to show this
+#		print "Chkpnt block $x, ";
+#		if ( $checkpoint_file ) {
+#			print chk "Checkpoint: $x blocks, $changed changes, $rewrote rewrites, $added database only\n";
+#		}
+#		print int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
+#		# sync
+#		#system("sync");
+#		#print "sync\n";
+#		$db->db_sync();
+#		fsync(\*back) or die "fsync: $!";
+#		#fsync(\*chk) or die "fsync: $!";
+#	}
 	$x++;
 #	exit;
 }
@@ -334,7 +351,7 @@ print "Total of $x blocks on device\n";
 print $changed . " changes (".int($changed/$total_checked*100)."%)\n";
 print $rewrote . " rewrites to backup drive (".int($rewrote/$total_checked*100)."%)\n";
 print $added . " database only updates (".int($added/$total_checked*100)."%)\n";
-print "Speed was " . int(($x * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
+print "Speed was " . int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
 
 if ( $checkpoint_file ) {
 	print chk "Finished: $x blocks, $changed changes, $rewrote rewrites, $added times only checksum was added\n";
