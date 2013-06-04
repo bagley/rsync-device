@@ -199,6 +199,7 @@ my $backup_seek_pos=0;
 my $speed_start_time=time;
 my $speed_start_time_current_pass=time;
 my $verified_blocks=0;
+my $saved_digest=0;
 
 seek(orig,($x * $block_size) - $block_size,0);
 while (($n = read orig, $data, $block_size) != 0) { 
@@ -207,7 +208,20 @@ while (($n = read orig, $data, $block_size) != 0) {
 #	$digest = md5_base64($data);
 	$digest = crc32($data);
 #	print save $digest . "\n";
-	if ( $verify or not exists $backup_block_hashes{$x} or $backup_block_hashes{$x} != $digest) { 
+	# get value, so we don't have to keep looking it up
+	#$saved_digest=$backup_block_hashes{0};
+	#if ( $saved_digest eq '' ) {
+	#	print "undef\n";
+	#}
+	#print $saved_digest . "\n";
+	#exit 1;
+	if ( not exists $backup_block_hashes{$x} ) {
+		$saved_digest=0;
+	}
+	else {
+		$saved_digest=$backup_block_hashes{$x};
+	}
+	if ( $verify or $saved_digest != $digest) { 
 		# this will also be the checkonly one
 #		if ( $backup_seek_pos != $x ) {
 			#print "seeked to $x\n";
@@ -243,8 +257,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 		}
 		else {
 			# blocks match
-			if ( not exists $backup_block_hashes{$x} or
-					$backup_block_hashes{$x} != $digest ) {
+			if ( $saved_digest != $digest ) {
 				# just update database
 				# print "only added chksum $x!\n";
 				# no verification needed
@@ -287,7 +300,8 @@ while (($n = read orig, $data, $block_size) != 0) {
 			$cache_count=0;
 			%cached_changed_blocks=();
 			# print stats
-			print "Chkpnt block $x: " . (int($current_changed/$save_every*100)) .
+			print "Chkpnt block $x: " . sprintf("%.2f", $x * 4096 / 1024 / 1024 / 1024 ) . "G, ".
+				(int($current_changed/$save_every*100)) .
 				"% changes, $current_rewrote/$verified_blocks/$rewrote (".
 				(int($current_rewrote/$save_every*100)) .
 				"%) rewrites, $current_added/$added (".
