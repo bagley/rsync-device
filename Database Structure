@@ -1,0 +1,13 @@
+Each key is unique. No duplication.
+key=value
+
+Each key represents the device block
+
+Special keys
+
+-1="database version"
+
+0=block size, ie
+0=4096
+(change in block size invalidates database)
+

@@ -1,0 +1,45 @@
+Make program that duplicates block devices, according to block size, and compare hashes
+
+md5 should be enough, though sha1 may be better (only 4096 bytes in block)
+
+rsync-device [--store-hashes|-s /file] /dev/original /dev/copy
+
+if = open("/dev/ram1", "r")
+of = open("/dev/sdb1", "r+")
+seek(of, 2469396480)
+loop until you have copied the amount of data you want {
+    chunk = read(if, min(chunksize, remaining_bytes_to_copy))
+    write(of, chunk)
+}
+
+Too slow (only going at 10mb/s rather than 50mb/s like before).
+- may be because I only read 4096 from one file and jump to the other file
+  Try reading lots of data and then processing it together
+- may be due to seeking. Try keeping track of where we are in the file
+  and only seeking when needed.
+- delay writes? write all at once?
+- Try not writing at all (comment out code) and see if it makes a speed increase
+- add benchmark and tracking code
+
+
+verified that end of file block (last block) is being copied and checked
+It kept ending on "293402340 - 0" which makes me wonder if it's copying the block over
+[yes, it appears to do so]
+Tested by reading out last block of each file and comparing hashes
+
+verified that when duplicating files (not block devices), if the second file is smaller, it will the expanced to match the size of the first. Of course, if the first is smaller than the second, the first will not be expanded, and the end of the second one (that which is greater than the size of the first) will not be changed, and a checksum of both files will not match due to the extra data.
+
+# test
+dd if=/dev/urandom of=/home/macgyver/tmp/test1 bs=1M count=25
+perl ./rsync-device --sums //home/macgyver/tmp/test.sums /home/macgyver/tmp/test1 /home/macgyver/tmp/test2
+
+sha1sum /home/macgyver/tmp/test{1,2}
+# (blocks have to have the same size when being made)
+ls -l /home/macgyver/tmp/test{1,2}
+
+# verify blocks
+for EACH in 1 2 ; do dd if=/home/macgyver/tmp/test$EACH bs=4096 skip=6400 count=1 | sha1sum - ; done
+
+# add random data into block
+dd if=/dev/urandom of=/home/macgyver/tmp/test1 bs=3456 seek=300 count=20 conv=notrunc
+
