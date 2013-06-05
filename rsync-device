@@ -271,6 +271,9 @@ while (($n = read orig, $data, $block_size) != 0) {
 			}
 			
 		}
+		if ( $verify ) {
+			$verified_blocks++;
+		}
 	}
 	
 	# save database only every $save_every (and verify it)
@@ -313,7 +316,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 			# print stats
 			print "Chkpnt block $x: " . sprintf("%.2f", $x * $block_size / 1024 / 1024 / 1024 ) . "G, ".
 				(int($current_changed/$save_every*100)) .
-				"% changes, $current_rewrote/$verified_blocks/$rewrote (".
+				"% checked, $current_rewrote/$verified_blocks/$rewrote (".
 				(int($current_rewrote/$save_every*100)) .
 				"%) rewrites, $current_added/$added (".
 				(int($current_added/$save_every*100)) .
@@ -375,7 +378,7 @@ $x--;
 my $total_checked=$x-$start_place;
 print "All done\n";
 print "Total of $x blocks on device\n";
-print $changed . " changes (".int($changed/$total_checked*100)."%)\n";
+print $changed . " checked (".int($changed/$total_checked*100)."%)\n";
 print $rewrote . " rewrites to backup drive (".int($rewrote/$total_checked*100)."%)\n";
 print $added . " database only updates (".int($added/$total_checked*100)."%)\n";
 print "Speed was " . int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
