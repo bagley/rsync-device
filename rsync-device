@@ -195,6 +195,7 @@ my $added=0;
 my $changed=0;
 my $rewrote=0;
 my %cached_changed_blocks=();
+# my %cached_database_updates=();
 my $current_added=0;
 my $current_changed=0;
 my $current_rewrote=0;
@@ -274,6 +275,11 @@ while (($n = read orig, $data, $block_size) != 0) {
 	
 	# save database only every $save_every (and verify it)
 	if ( $x % $save_every == 0 and $x - $start_place >= $save_every ) {
+			
+			# send backup data to the platter for verification
+			fsync(\*back) or die "fsync: $!";
+			
+			# block changes that need verification
 			foreach (sort keys %cached_changed_blocks) {
 				my $b=$_;
 #				if ( $backup_seek_pos != $b ) {
@@ -292,6 +298,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 				$backup_block_hashes{$b} = $cached_changed_blocks{$b};
 				$verified_blocks++;
 			}
+			
 			# sync
 			#system("sync");
 			#print "sync\n";
@@ -302,6 +309,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 			# reset counter
 			$cache_count=0;
 			%cached_changed_blocks=();
+			
 			# print stats
 			print "Chkpnt block $x: " . sprintf("%.2f", $x * 4096 / 1024 / 1024 / 1024 ) . "G, ".
 				(int($current_changed/$save_every*100)) .
@@ -310,6 +318,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 				"%) rewrites, $current_added/$added (".
 				(int($current_added/$save_every*100)) .
 				"%) db only, ";
+			
 			# write to checkpoint file (hot write)
 			if ( $checkpoint_file ) {
 				print chk "Checkpoint: $x blocks, $changed changes, $rewrote rewrites, $added database only\n";
@@ -345,6 +354,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 # finish writing changed blocks
 print $cache_count . "\n";
 if ( $cache_count > 0 ) {
+	fsync(\*back) or die "fsync: $!";
 	foreach (sort keys %cached_changed_blocks) {
 		my $b=$_;
 		seek(back,($b * $block_size) - $block_size,0);
