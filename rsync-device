@@ -61,7 +61,7 @@ sub errout {
 }
 
 # how many blocks do we do at once?
-my $blocks_at_once=4;
+my $blocks_at_once=8;
 
 # get options
 my ($original, $backup);
