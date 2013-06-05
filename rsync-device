@@ -60,11 +60,14 @@ sub errout {
 	exit 1;
 }
 
+# how many blocks do we do at once?
+my $blocks_at_once=4;
+
 # get options
 my ($original, $backup);
 my $help = '';
 my $verbose = '';
-my $block_size=4096;
+my $block_size=4096 * $blocks_at_once;
 my $checkonly='';
 my $verify='';
 my $start_place=1;
@@ -120,7 +123,7 @@ else {
 	
 }	
 	
-	print $original . ' ' . $backup . "\n";
+	print $original . ' -> ' . $backup . "\n";
 	foreach (@ARGV) {
 		print $_ . "\n";
 	}
