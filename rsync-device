@@ -311,7 +311,7 @@ while (($n = read orig, $data, $block_size) != 0) {
 			%cached_changed_blocks=();
 			
 			# print stats
-			print "Chkpnt block $x: " . sprintf("%.2f", $x * 4096 / 1024 / 1024 / 1024 ) . "G, ".
+			print "Chkpnt block $x: " . sprintf("%.2f", $x * $block_size / 1024 / 1024 / 1024 ) . "G, ".
 				(int($current_changed/$save_every*100)) .
 				"% changes, $current_rewrote/$verified_blocks/$rewrote (".
 				(int($current_rewrote/$save_every*100)) .
