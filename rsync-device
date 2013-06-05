@@ -172,12 +172,18 @@ else {
 }
 
 sub do_cleanup {
+	my $sig=shift;
 	print "Syncing and closing\n";
 	$db->db_sync();
 	fsync(\*back) or die "fsync: $!";
 	system("sync");
 	close(back);
-	exit;
+	if ( $sig eq "INT" or $sig eq "HUP" or $sig eq "TERM" or $sig eq "ALRM" ) {
+        print "Exited due to user direction.\n";
+        exit 1;
+    }
+    print "Successfully copied device\n";
+    exit 0;
 }	
 
 # trap signals
