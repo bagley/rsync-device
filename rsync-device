@@ -217,12 +217,13 @@ my $speed_start_time=time;
 my $speed_start_time_current_pass=time;
 my $verified_blocks=0;
 my $saved_digest=0;
+my $failed_read=0;
 
 seek(orig,($x * $block_size) - $block_size,0);
 while (($n = read orig, $data, $block_size) != 0) { 
 	# print "$n bytes read\n";
 	# did we read it right?
-	if ( not defined($data) ) {
+	if ( $n = undef ) {
 		die "Failed to read main device at block $x: $!";
 	}
 	# $buf .= $data;
@@ -249,9 +250,20 @@ while (($n = read orig, $data, $block_size) != 0) {
 			seek(back,($x * $block_size) - $block_size,0) || die "Could not seek on backup block $x: $!";
 #			$backup_seek_pos=$x;
 #		}
-		read(back, $backup_data, $block_size) || die "Could not read on backup block $x: $!";
+		# we don't error out because we may be writing to a smaller file
+		# instead we record the error. If there really is a problem, 
+		# we will not be able to write to it nor verify it,
+		# both which will error out.
+		my $r = read(back, $backup_data, $block_size);
 #		$backup_seek_pos++;
-		$backup_digest = crc32($backup_data);
+		if ( $r == undef ) {
+			# print "failed\n";
+			$failed_read++;
+			$backup_digest=0;
+		}
+		else {
+			$backup_digest = crc32($backup_data);
+		}
 		# print "changed from $backup_block_hashes{$x} at $x: $digest - $backup_digest\n";
 		$changed++;
 		$current_changed++;
@@ -348,11 +360,18 @@ while (($n = read orig, $data, $block_size) != 0) {
 			$current_changed=0;
 			$current_rewrote=0;
 			$verified_blocks=0;
+			
 			# print disk speeds
 			print int(($save_every * $block_size / 1024 / 1024 ) / (time - $speed_start_time_current_pass + 1)) . " Mb/s (";
 			$speed_start_time_current_pass=time;
 			print int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s avg)\n";
-		
+			
+			# print failed reads
+			if ( $failed_read > 0 ) {
+				print "  FYI: could not read $failed_read blocks here, but wrote successfully.\n";
+				print "  Perhaps you are writing to a smaller file, or a drive with sector errors...\n";
+			}
+			$failed_read=0;
 	}
 #	elsif ( $x % $save_every == 0 ) {
 #		# if it's checking all blocks, we dont need to show this
@@ -395,6 +414,11 @@ while (($n = read orig, $data, $block_size) != 0) {
 	fsync(\*back) or die "fsync: $!";
 	$cache_count=0;
 	%cached_changed_blocks=();
+	# print failed reads
+	if ( $failed_read > 0 ) {
+		print "  FYI: could not read $failed_read blocks, but were able to write them.\n";
+		print "  Perhaps you are writing to a smaller file, or a drive with sector errors...\n";
+	}
 #}
 $x--;
 my $total_checked=$x-$start_place;
