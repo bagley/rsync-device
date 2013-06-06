@@ -35,6 +35,9 @@ It is like rsync, but works with devices rather than files (like /dev/sda2)
                      or specify checkpoint file
   
   --savecp FILE Save checkpoints to this file rather than a tmp file
+  
+  --save-every NUM  Save (Checkpoint) data every NUM blocks of data
+  
              	 
   --checkonly   Just check the backup device/file. A checksum file (--save)
                 must be provided, and only one backup can be specified.
@@ -71,6 +74,8 @@ my $block_size=4096 * $blocks_at_once;
 my $checkonly='';
 my $verify='';
 my $start_place=1;
+# check and save every 100000 blocks (400M)
+my $save_every=100000;
 my ($checksums_file, $checkpoint_file) = '';
 Getopt::Long::Configure ('bundling');
 if ( @ARGV > 0 ) {
@@ -79,6 +84,7 @@ if ( @ARGV > 0 ) {
    'b|block=i' => \$block_size,
    'start=s' => \$start_place,
    'savecp=s' => \$checkpoint_file,
+   'save-every=i' => \$save_every,
    'checkonly' => \$checkonly,
    'verify' => \$verify,
    'v|verbose!' => \$verbose,
@@ -133,8 +139,6 @@ else {
 # prompt (are you sure?)
 # override with -y
 
-# check and save every 100000 blocks (400M)
-my $save_every=100000;
 my $cache_count=0;
 
 if ( $checkpoint_file ) {
