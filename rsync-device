@@ -38,8 +38,11 @@ It is like rsync, but works with devices rather than files (like /dev/sda2)
   
   --save-every NUM  Save (Checkpoint) data every NUM blocks of data
   
+  --verify      Verify data, ignoring checksums from database, thus
+                checking that both drives match. We still update the
+                database if needed.
              	 
-  --checkonly   Just check the backup device/file. A checksum file (--save)
+  --checkonly   [not implemented] Just check the backup device/file. A checksum file (--save)
                 must be provided, and only one backup can be specified.
                 Check size is ignored, as the checksum file has the
                 needed size in it.
