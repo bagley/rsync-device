@@ -221,6 +221,10 @@ my $saved_digest=0;
 seek(orig,($x * $block_size) - $block_size,0);
 while (($n = read orig, $data, $block_size) != 0) { 
 	# print "$n bytes read\n";
+	# did we read it right?
+	if ( not defined($data) ) {
+		die "Failed to read main device at block $x: $!";
+	}
 	# $buf .= $data;
 #	$digest = md5_base64($data);
 	$digest = crc32($data);
@@ -242,10 +246,10 @@ while (($n = read orig, $data, $block_size) != 0) {
 		# this will also be the checkonly one
 #		if ( $backup_seek_pos != $x ) {
 			#print "seeked to $x\n";
-			seek(back,($x * $block_size) - $block_size,0);
+			seek(back,($x * $block_size) - $block_size,0) || die "Could not seek on backup block $x: $!";
 #			$backup_seek_pos=$x;
 #		}
-		read(back, $backup_data, $block_size);
+		read(back, $backup_data, $block_size) || die "Could not read on backup block $x: $!";
 #		$backup_seek_pos++;
 		$backup_digest = crc32($backup_data);
 		# print "changed from $backup_block_hashes{$x} at $x: $digest - $backup_digest\n";
@@ -260,10 +264,10 @@ while (($n = read orig, $data, $block_size) != 0) {
 			$current_rewrote++;
 #			if ( $backup_seek_pos != $x ) {
 				#print "seeked to $x\n";
-				seek(back,($x * $block_size) - $block_size,0);
+				seek(back,($x * $block_size) - $block_size,0) || die "Could not seek to backup block $x: $!";
 #				$backup_seek_pos=$x;
 #			}
-			print back $data;
+			print back $data || die "Could not write to backup block $x: $!";
 #			$backup_seek_pos++;
 			
 			# save digest to database
@@ -300,10 +304,10 @@ while (($n = read orig, $data, $block_size) != 0) {
 				my $b=$_;
 #				if ( $backup_seek_pos != $b ) {
 					#print "seeked to $b\n";
-					seek(back,($b * $block_size) - $block_size,0);
+					seek(back,($b * $block_size) - $block_size,0) || die "Could not seek to backup block $b: $!";
 #					$backup_seek_pos=$b;
 #				}
-				read(back, $backup_data, $block_size);
+				read(back, $backup_data, $block_size) || die "Could not read backup block $b: $!";
 #				$backup_seek_pos++;
 				$backup_digest = crc32($backup_data);
 				if ( $backup_digest != $cached_changed_blocks{$b} ) {
@@ -311,7 +315,8 @@ while (($n = read orig, $data, $block_size) != 0) {
 					exit 1;
 					# todo: try to rewite and fix
 				}
-				$backup_block_hashes{$b} = $cached_changed_blocks{$b};
+				$backup_block_hashes{$b} = $cached_changed_blocks{$b} 
+					|| die "Failed to save digest for $b ($cached_changed_blocks{$b})";
 				$verified_blocks++;
 			}
 			
@@ -368,25 +373,29 @@ while (($n = read orig, $data, $block_size) != 0) {
 }
 
 # finish writing changed blocks
-print $cache_count . "\n";
-if ( $cache_count > 0 ) {
+#print $cache_count . "\n";
+#if ( $cache_count > 0 ) {
 	fsync(\*back) or die "fsync: $!";
 	foreach (sort keys %cached_changed_blocks) {
 		my $b=$_;
-		seek(back,($b * $block_size) - $block_size,0);
-		read(back, $backup_data, $block_size);
+		seek(back,($b * $block_size) - $block_size,0) || die "Could not seek to backup block $b: $!";
+		read(back, $backup_data, $block_size) || die "Could not read backup block $b: $!";
 		$backup_digest = crc32($backup_data);
 		if ( $backup_digest != $cached_changed_blocks{$b} ) {
 			print "Block $b failed to write properly. Exiting.\n";
 			exit 1;
 			# todo: try to rewite and fix
 		}
-		$backup_block_hashes{$b} = $cached_changed_blocks{$b};
+		$backup_block_hashes{$b} = $cached_changed_blocks{$b} 
+			|| die "Failed to save digest for $b ($cached_changed_blocks{$b})";
+		$verified_blocks++;
 	}
 	# sync
 	$db->db_sync();
 	fsync(\*back) or die "fsync: $!";
-}
+	$cache_count=0;
+	%cached_changed_blocks=();
+#}
 $x--;
 my $total_checked=$x-$start_place;
 print "All done\n";
