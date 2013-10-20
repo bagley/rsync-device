@@ -430,7 +430,13 @@ print $added . " database only updates (".int($added/$total_checked*100)."%)\n";
 print "Speed was " . int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
 
 if ( $checkpoint_file ) {
-	print chk "Finished: $x blocks, $changed changes, $rewrote rewrites, $added times only checksum was added\n";
+	print chk "$x blocks, $changed changes, $rewrote rewrites, $added times only checksum was added\n";
+	print chk $changed . " checked (".int($changed/$total_checked*100)."%)\n";
+	print chk $rewrote . " rewrites to backup drive (".int($rewrote/$total_checked*100)."%)\n";
+	print chk $added . " database only updates (".int($added/$total_checked*100)."%)\n";
+	print chk "Speed was " . int((($x - $start_place) * $block_size / 1024 /1024 ) / (time - $speed_start_time +1)) . " Mb/s\n";
+	print chk "Finished copy\n";
+	
 }
 
 close(orig);
