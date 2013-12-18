@@ -1,5 +1,9 @@
 #!/usr/bin/perl
 
+# copy a disk, storing the hashes to improve subsequent speeds.
+
+# Copyright Matt Bagley
+# under the GPL 3
 
 use strict;
 #use Digest::MD5 qw(md5_base64);
